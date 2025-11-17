@@ -14,8 +14,6 @@ fn main() {
         .flag("-march=native")
         .compile("wormhole");
 
-    pkg_config::probe_library("mimalloc").expect("Could not find mimalloc");
-
     for path in files.iter().chain([&include]) {
         println!("cargo:rerun-if-changed={path}");
     }
