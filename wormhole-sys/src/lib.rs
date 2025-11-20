@@ -66,36 +66,36 @@ pub struct WormRef<'a> {
 }
 
 impl WormRef<'_> {
-    pub fn get(&self, key: u64) -> Option<u32> {
+    pub unsafe fn get(&self, key: *const ffi::c_void, key_len: usize) -> Option<u64> {
         unsafe {
-            let mut value = 0u32;
-            let mut len = 0u32;
+            let mut value = 0u64;
+            let mut value_len = 0u64;
             wh_get(
                 self.inner,
-                &key as *const u64 as _,
+                key,
+                key_len as u32,
+                &mut value as *mut u64 as _,
                 8,
-                &mut value as *mut u32 as _,
-                4,
-                &mut len as *mut u32 as _,
+                &mut value_len as *mut u64 as _,
             )
             .then_some(value)
         }
     }
 
-    pub fn put(&self, key: u64, value: u32) {
+    pub unsafe fn put(&self, key: *const ffi::c_void, key_len: usize, value: u64) {
         unsafe {
             wh_put(
                 self.inner,
-                &key as *const u64 as _,
+                key,
+                key_len as u32,
+                &value as *const u64 as _,
                 8,
-                &value as *const u32 as _,
-                4,
             );
         }
     }
 
-    pub fn del(&self, key: u64) {
-        unsafe { wh_del(self.inner, &key as *const u64 as _, 8) };
+    pub unsafe fn del(&self, key: *const ffi::c_void, key_len: usize) {
+        unsafe { wh_del(self.inner, key, key_len as u32) };
     }
 }
 
@@ -119,19 +119,19 @@ mod test {
         const COUNT: u64 = 100_000;
 
         for i in 0..COUNT {
-            wr.put(i, i as u32);
+            unsafe { wr.put(&i as *const _ as _, 8, i) };
         }
 
         for i in 0..COUNT {
-            assert_eq!(wr.get(i), Some(i as u32));
+            assert_eq!(unsafe { wr.get(&i as *const _ as _, 8) }, Some(i));
         }
 
         for i in 0..COUNT {
-            wr.del(i);
+            unsafe { wr.del(&i as *const _ as _, 8) };
         }
 
         for i in 0..COUNT {
-            assert_eq!(wr.get(i), None);
+            assert_eq!(unsafe { wr.get(&i as *const _ as _, 8) }, None);
         }
     }
 }
